@@ -28,16 +28,16 @@ contract HelperConfig is Script {
         networkConfigs[ETH_SEPOLIA_CHAIN_ID] = getSepoliaNetworkConfig();
     }
 
-    function getConfig() external view returns (NetworkConfig memory) {
+    function getConfig() public returns (NetworkConfig memory) {
         return getConfigByChainId(block.chainid);
     }
 
-    function getConfigByChainId(uint256 chainId) public view returns (NetworkConfig memory) {
+    function getConfigByChainId(uint256 chainId) public returns (NetworkConfig memory) {
         if (networkConfigs[chainId].vrfCoordinator != address(0)) {
             return networkConfigs[chainId];
         }
         else if (chainId == LOCAL_CHAIN_ID) {
-            return localNetworkConfig;
+            return getOrCreateLocalNetworkConfig();
 
         } else {
             revert InvalidNetworkConfig();
@@ -65,12 +65,14 @@ contract HelperConfig is Script {
         MockLinkToken linkTokenMock = new MockLinkToken();
         vm.stopBroadcast();
 
-        return NetworkConfig({
+        localNetworkConfig = NetworkConfig({
             vrfCoordinator: address(vrfCoordinatorMock),
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             subscriptionId: subscriptionIdMock,
             account: 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38,
             linkToken: address(linkTokenMock)
         });
+
+        return localNetworkConfig;
     }
 }

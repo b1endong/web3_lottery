@@ -1,27 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// Layout of Contract:
-// version
-// imports
-// errors
-// interfaces, libraries, contracts
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// view & pure functions
-
 import {VRFConsumerBaseV2Plus} from "@chainlink.git/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink.git/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 contract Lottery is VRFConsumerBaseV2Plus {
@@ -104,7 +83,6 @@ contract Lottery is VRFConsumerBaseV2Plus {
                 requestConfirmations: REQUEST_CONFIRMATIONS,
                 callbackGasLimit: i_callbackGasLimit,
                 numWords: NUM_WORDS,
-                // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
                 extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
             })
         );
@@ -134,5 +112,9 @@ contract Lottery is VRFConsumerBaseV2Plus {
 
     function getPlayerByIndex(uint256 index) external view returns (address){
         return s_players[index];
+    }
+
+    function getVrfCoordinator() external view returns (address) {
+        return address(s_vrfCoordinator);
     }
 }
