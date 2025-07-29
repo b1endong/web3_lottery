@@ -17,6 +17,7 @@ contract TestLottery is Test {
     HelperConfig.NetworkConfig config;
     
     event LotteryEntered(address player);
+    event LotteryWinner(address winner, uint256 amount);
 
     function setUp() public {
         DeployLottery deployer = new DeployLottery();
@@ -61,9 +62,37 @@ contract TestLottery is Test {
     }
 
     function test_lotteryRequestId() public {
-        //Test error
+        //Test revert when no players
+        vm.expectRevert(Lottery.Lottery_NotEnoughPlayers.selector);
         lottery.lotteryRequestId();
+
+        //Add player and request lottery
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ENTRANCE_FEE}();
+        uint256 requestId = lottery.lotteryRequestId();
+
+        //Test revert when trying to enter after lottery is closed
+        vm.expectRevert(Lottery.Lottery_NotOpen.selector);
+        vm.prank(PLAYER);
+        lottery.enterLottery{value: ENTRANCE_FEE}();
+
+        //Expect emit event
+        vm.expectEmit();
+        emit LotteryWinner(PLAYER, ENTRANCE_FEE);
+        //Action - fulfill random words
+        VRFCoordinatorV2_5Mock(config.vrfCoordinator).fulfillRandomWords(
+            requestId, 
+            address(lottery)
+        );
+
+        //Assertions
+        assertEq(lottery.getWinner(), PLAYER);
+        assertEq(lottery.getCurrentWinnerBalance(PLAYER), ENTRANCE_FEE);
+        assert(Lottery.LotteryState.OPEN == lottery.getLotteryState());
+        assertEq(lottery.getPlayersLength(), 0);
+        assertEq(lottery.getRewardBalance(), 0);
     }
+
 }
 //         //Action
 //         vm.prank(PLAYER);
