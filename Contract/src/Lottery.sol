@@ -13,6 +13,8 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     error Lottery_NotOpen();
     error Lottery_NotEnoughPlayers();
     error Lottery_UpkeepNotNeeded();
+    error Lottery_WinnerBalanceNotEnough();
+    error Lottery_WinnerWithdrawFailed();
 
     /*//////////////////////////////////////////////////////////////
                             TYPE DECLARATIONS
@@ -47,8 +49,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                             EVENTS
     //////////////////////////////////////////////////////////////*/
     event LotteryEntered(address player);
-    event LotteryRequestId(uint256 requestId);
+    event LotteryRequestId(uint256 indexed requestId);
     event LotteryWinner(address winner, uint256 amount);
+    event WinnerWithdraw(address player, uint256 amount);
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -67,8 +70,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            ACTION FUNCTION
+                            EXTERNAL FUNCTION
     //////////////////////////////////////////////////////////////*/
+
     function enterLottery() external payable {
         if (s_lotteryState != LotteryState.OPEN) {
             revert Lottery_NotOpen();
@@ -85,40 +89,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         emit LotteryEntered(msg.sender);
     }
 
-    function lotteryRequestId() public returns (uint256 requestId) {
-        
-       requestId = s_vrfCoordinator.requestRandomWords(
-            VRFV2PlusClient.RandomWordsRequest({
-                keyHash: i_keyHash,
-                subId: i_subscriptionId,
-                requestConfirmations: REQUEST_CONFIRMATIONS,
-                callbackGasLimit: i_callbackGasLimit,
-                numWords: NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
-            })
-        );
-
-        s_lotteryState = LotteryState.CLOSED;
-
-        emit LotteryRequestId(requestId);
-    }
-
-    function fulfillRandomWords(uint256 /*requestId*/, uint256[] calldata randomWords) internal override {
-        
-
-        uint256 s_currentWinnerIndex = randomWords[0] % s_players.length;
-        address s_winner = s_players[s_currentWinnerIndex];
-        uint256 winnerBalance = s_rewardBalance;
-
-        s_currentWinner = s_winner;
-        s_currentWinnerBalance[s_winner] += winnerBalance;
-
-        s_rewardBalance = 0;
-        delete s_players;
-        s_lotteryState = LotteryState.OPEN;
-
-        emit LotteryWinner(s_winner, winnerBalance);
-    }
+    /*//////////////////////////////////////////////////////////////
+                            PUBLIC FUNCTION
+    //////////////////////////////////////////////////////////////*/
 
     function checkUpkeep(
         bytes memory /* checkData */
@@ -145,6 +118,62 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
         lotteryRequestId(); 
         
+    }
+
+    function winnerWithdraw() public {
+        //Check
+        if (s_currentWinnerBalance[msg.sender] <= 0) {
+            revert Lottery_WinnerBalanceNotEnough();
+        }
+
+        //Effects
+        uint256 rewardWithdraw = s_currentWinnerBalance[msg.sender];
+        (bool success,) = msg.sender.call{value: rewardWithdraw}("");
+        if (!success) {
+            revert Lottery_WinnerWithdrawFailed();
+        }
+
+        //Interaction
+        s_currentWinnerBalance[msg.sender] = 0;
+        emit WinnerWithdraw(msg.sender, rewardWithdraw);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL/PRIVATE FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    function fulfillRandomWords(uint256 /*requestId*/, uint256[] calldata randomWords) internal override {
+
+        uint256 s_currentWinnerIndex = randomWords[0] % s_players.length;
+        address s_winner = s_players[s_currentWinnerIndex];
+        uint256 winnerBalance = s_rewardBalance;
+
+        s_currentWinner = s_winner;
+        s_currentWinnerBalance[s_winner] += winnerBalance;
+
+        s_rewardBalance = 0;
+        delete s_players;
+        s_lotteryState = LotteryState.OPEN;
+
+        emit LotteryWinner(s_winner, winnerBalance);
+    }
+
+    function lotteryRequestId() private returns (uint256 requestId) {
+        
+       requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: i_keyHash,
+                subId: i_subscriptionId,
+                requestConfirmations: REQUEST_CONFIRMATIONS,
+                callbackGasLimit: i_callbackGasLimit,
+                numWords: NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
+        );
+
+        s_lotteryState = LotteryState.CLOSED;
+
+        emit LotteryRequestId(requestId);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -182,6 +211,8 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return s_lotteryState;
     }
 
-    
+    function getLastTimeStamp() external view returns (uint256) {
+        return s_lastTimeStamp;
+    }   
 
 }
