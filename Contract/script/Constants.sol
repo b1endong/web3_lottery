@@ -14,4 +14,4 @@ uint96 constant GAS_PRICE = 1e9; // 1 gwei
 int256 constant WEI_PER_UNIT_LINK = 1e18; // 1 LINK = 1e18 wei
 
 //Chainlink Automation constants
-uint256 constant AUTO_INTERVAL = 30;
+uint256 constant AUTO_INTERVAL = 180;
