@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {Lottery} from "../src/Lottery.sol";
-import {ENTRANCE_FEE, CALLBACK_GAS_LIMIT} from "./Constants.sol";
+import {ENTRANCE_FEE, CALLBACK_GAS_LIMIT, AUTO_INTERVAL} from "./Constants.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
 
 contract DeployLottery is Script {
@@ -16,7 +16,7 @@ contract DeployLottery is Script {
 
     function deployLottery() public returns (Lottery, HelperConfig) {
         vm.startBroadcast(config.account);
-        Lottery lottery = new Lottery(ENTRANCE_FEE, config.vrfCoordinator, config.keyHash, CALLBACK_GAS_LIMIT, config.subscriptionId);
+        Lottery lottery = new Lottery(ENTRANCE_FEE, config.vrfCoordinator, config.keyHash, CALLBACK_GAS_LIMIT, config.subscriptionId, AUTO_INTERVAL);
         vm.stopBroadcast();
         return (lottery, helper);
     }

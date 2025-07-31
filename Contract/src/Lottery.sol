@@ -3,14 +3,16 @@ pragma solidity ^0.8.0;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink.git/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink.git/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
-contract Lottery is VRFConsumerBaseV2Plus {
-   
+import {AutomationCompatibleInterface} from "@chainlink.git/contracts/src/v0.8/automation/AutomationCompatible.sol";
+contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
+
     /*//////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
     error Lottery_InvalidEntranceFee();
     error Lottery_NotOpen();
     error Lottery_NotEnoughPlayers();
+    error Lottery_UpkeepNotNeeded();
 
     /*//////////////////////////////////////////////////////////////
                             TYPE DECLARATIONS
@@ -37,6 +39,8 @@ contract Lottery is VRFConsumerBaseV2Plus {
     uint32 private immutable i_callbackGasLimit;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS =  1;
+    uint256 public immutable i_interval;
+    uint256 public s_lastTimeStamp;
 
 
     /*//////////////////////////////////////////////////////////////
@@ -52,12 +56,14 @@ contract Lottery is VRFConsumerBaseV2Plus {
                 address vrfCoordinator, 
                 bytes32 keyHash, 
                 uint32 callbackGasLimit, 
-                uint256 subscriptionId) VRFConsumerBaseV2Plus(vrfCoordinator) {
+                uint256 subscriptionId,
+                uint256 interval) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_EntranceFee = entranceFee;
         s_lotteryState = LotteryState.OPEN;
         i_subscriptionId = subscriptionId;
         i_keyHash = keyHash;
         i_callbackGasLimit = callbackGasLimit;
+        i_interval = interval;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -80,10 +86,7 @@ contract Lottery is VRFConsumerBaseV2Plus {
     }
 
     function lotteryRequestId() public returns (uint256 requestId) {
-        if (s_players.length == 0) {
-            revert Lottery_NotEnoughPlayers();
-        }
-
+        
        requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_keyHash,
@@ -117,7 +120,32 @@ contract Lottery is VRFConsumerBaseV2Plus {
         emit LotteryWinner(s_winner, winnerBalance);
     }
 
+    function checkUpkeep(
+        bytes memory /* checkData */
+    )
+        public
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory /* performData */)
+    {
+        bool timePassed = (block.timestamp - s_lastTimeStamp) > i_interval;
+        bool hasPlayed = s_players.length > 0;
+        bool isOpen = s_lotteryState == LotteryState.OPEN;
+        upkeepNeeded = timePassed && hasPlayed && isOpen;
+        return (upkeepNeeded, "0x0"); 
+    }
 
+    function performUpkeep(bytes calldata /* performData */)  external override {
+        (bool upkeepNeeded,) = checkUpkeep("");
+        if (!upkeepNeeded) {
+            revert Lottery_UpkeepNotNeeded();
+        }
+
+        s_lastTimeStamp = block.timestamp;
+
+        lotteryRequestId(); 
+        
+    }
 
     /*//////////////////////////////////////////////////////////////
                             GETTER FUNCTION
