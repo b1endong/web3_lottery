@@ -10,6 +10,7 @@ This project demonstrates how to create a fair and trustless lottery system usin
 
 -   **Solidity** smart contracts
 -   **Chainlink VRF (Oracle)** for randomness
+-   **Chainlink Automation (Oracle)** for automated on picking winner
 -   **Hardhat / Foundry** for development and testing
 -   **Ethers.js / Web3.js** for frontend interaction (optional)
 
@@ -28,6 +29,7 @@ This project demonstrates how to create a fair and trustless lottery system usin
 
 -   Solidity (`^0.8.x`)
 -   Chainlink VRF v2
+-   Chainlink Automation
 -   Hardhat / Foundry (development & testing)
 -   Chainlink Oracle Network
 -   Ethers.js (optional frontend integration)
