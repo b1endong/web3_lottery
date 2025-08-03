@@ -48,7 +48,8 @@ export const getLotteryState = async (ethersProvider) => {
             contractAbi,
             ethersProvider
         );
-        const state = await contract.getLotteryState();
+        const state = await contract.getLotteryState({blockTag: "latest"});
+        console.log("Lottery State:", state);
         return state.toString();
     } catch (error) {
         return null;

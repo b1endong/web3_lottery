@@ -87,16 +87,14 @@ export default function Body() {
         fetchContractData();
     }, [walletProvider]);
 
-    // Auto-refresh mỗi 30 giây để cập nhật dữ liệu sau khi pick winner
     useEffect(() => {
-        const refreshInterval = setInterval(() => {
-            if (walletProvider) {
-                console.log("🔄 Auto-refreshing contract data...");
-                fetchContractData();
-            }
-        }, 30000); // 30 giây
+        if (!walletProvider) return;
 
-        return () => clearInterval(refreshInterval);
+        const intervalId = setInterval(() => {
+            fetchContractData();
+        }, 5000); // gọi lại mỗi 5 giây
+
+        return () => clearInterval(intervalId);
     }, [walletProvider]);
 
     return (
